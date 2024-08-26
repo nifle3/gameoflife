@@ -95,7 +95,7 @@ cells: list[list[bool]] = list(list())
 
 
 pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH_INIT, SCREEN_HEIGHT_INIT,))
+screen = pygame.display.set_mode((SCREEN_WIDTH_INIT, SCREEN_HEIGHT_INIT,), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 is_running = True
 

@@ -1,16 +1,21 @@
-from typing import Final, Tuple
+from typing import Final, Tuple, Callable
+from functools import lru_cache
 
 import pygame
 
 ROW_COUNT: Final[int] = 15
 COL_COUNT: Final[int] = 15
 
-CELL_BORDER_SIZE: Final[int] = 3
+BACKGROUND_COLOR = (76, 86, 106)
+CELL_COLOR = (94, 129, 172)
+BORDER_COLOR = (235, 203, 139)
 
 SCREEN_WIDTH_INIT: Final[int] = 1280
 SCREEN_HEIGHT_INIT: Final[int] = 720
 
-FPS: Final[int] = 5
+BORDER_THICK: Final[int] = 3
+
+FPS: Final[int] = 10
 
 
 def calcul_cell_size() -> Tuple[float]:
@@ -22,35 +27,46 @@ def calcul_cell_size() -> Tuple[float]:
 
     return (cell_width, cell_height)
 
-
-def get_cell_drawer(width, height):
+@lru_cache
+def get_cell_drawer(width, height) -> Callable:
     def draw_cell(x, y, is_not_empty) -> None:
         x_screen = x * width
         y_screen = y * height
 
-        rect = pygame.Rect(x_screen, y_screen, width, height)
-        pygame.draw.rect(screen, color=(255, 100, 100), rect=rect, width=CELL_BORDER_SIZE)
         if is_not_empty:
-            inner_rect = pygame.Rect(x_screen+CELL_BORDER_SIZE, y_screen+CELL_BORDER_SIZE, width-CELL_BORDER_SIZE, height-CELL_BORDER_SIZE)
-            pygame.draw.rect(screen, color=(255, 255, 255), rect=inner_rect)
+            # -1 and +2 are the hack that fix diveded gap between two cells 
+            rect = pygame.Rect(x_screen-1, y_screen-1, width+2, height+2)
+            pygame.draw.rect(screen, color=CELL_COLOR, rect=rect)
 
     return draw_cell
 
 
-def init_empty_field():
+@lru_cache
+def get_border_drawer(width, height) -> Callable:
+    def draw_cell(x, y) -> None:
+        x_screen = x * width
+        y_screen = y * height
+
+        rect = pygame.Rect(x_screen-1, y_screen-1, width+2, height+2)
+        pygame.draw.rect(screen, color=BORDER_COLOR, rect=rect, width=BORDER_THICK)
+
+    return draw_cell
+
+
+def init_empty_field() -> None:
     for i in range(ROW_COUNT):
         cells.append([])
         for _ in range(COL_COUNT):
             cells[i].append(False)
 
 
-def init_start_value():
+def init_start_value() -> None:
     cells[3][2] = True
     cells[3][3] = True
     cells[3][4] = True
 
 
-def calcul_new_position():
+def calcul_new_position() -> None:
     global cells 
     new_state = _get_new_state_cells()
     for i in range(ROW_COUNT):
@@ -81,6 +97,7 @@ def calcul_new_position():
 
     cells = new_state
 
+
 def _get_new_state_cells() -> list[list[bool]]:
     new_state: list[list[bool]] = []
 
@@ -105,15 +122,39 @@ init_start_value()
 while is_running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            is_running = False      
+            is_running = False            
 
+    screen.fill(BACKGROUND_COLOR)
     width, heigth = calcul_cell_size()
+
+    if pygame.mouse.get_pressed()[0]:
+        x, y = pygame.mouse.get_pos()
+
+        x /= width
+        y /= heigth
+
+        col = int(x)
+        row = int(y)
+
+        cells[row][col] = not cells[row][col]
+
+
     drawer = get_cell_drawer(width=width, height=heigth)
-    screen.fill('purple')
 
     for i in range(len(cells)):
         for j in range(len(cells)):
             drawer(j, i, cells[i][j])
+
+    pressed_keys = pygame.key.get_pressed()
+    if pressed_keys[pygame.K_SPACE]:
+        drawer = get_border_drawer(width=width, height=heigth)
+        for i in range(len(cells)):
+            for j in range(len(cells)):
+                drawer(j, i)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+        continue
 
     calcul_new_position()
 
